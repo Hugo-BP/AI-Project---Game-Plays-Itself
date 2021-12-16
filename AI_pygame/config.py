@@ -125,12 +125,12 @@ building_coords = {
 
 available_player_classes = {
     # sprite_class : [health, power, line_of_sight]
-    'thug': [5, 2, 2],
-    'squire': [25, 5, 3],
-    'archer': [10, 10, 4],
-    'knight': [50, 10, 4],
+    'thug': [5, 3, 5],
+    'squire': [25, 5, 5],
+    'archer': [10, 10, 5],
+    'knight': [50, 10, 5],
     'wizard': [20, 25, 6],
-    'priest': [15, 2, 3],
+    'priest': [15, 2, 5],
 }
 
 available_enemy_classes = {

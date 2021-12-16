@@ -47,9 +47,11 @@ def map_renderer(game):
             if TILEMAP[row][column] == '00':
                 wall = Wall(game, column, row, "I dont feel like going for a swim...")
                 game.block_sprites.add(wall)
+                game.boundaries.append((wall.x, wall.y))
             elif TILEMAP[row][column] == '01' or TILEMAP[row][column] == '23' or TILEMAP[row][column] == '36':
                 wall = Wall(game, column, row, "I dont think I can climb that...")
                 game.block_sprites.add(wall)
+                game.boundaries.append((wall.x, wall.y))
 
     # draw buildings
     for key in building_coords:

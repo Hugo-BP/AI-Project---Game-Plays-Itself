@@ -11,11 +11,12 @@ class Player(pygame.sprite.Sprite):
         self.direction = ''
         self.is_healer = False
         self.is_fighting = False
+        """
         self.is_blockedL = False
         self.is_blockedR = False
         self.is_blockedU = False
         self.is_blockedD = False
-
+        """
 
         # places of interest MAX = 50
         self.places_of_interest = []
@@ -128,24 +129,24 @@ class Player(pygame.sprite.Sprite):
                 if direction == 'x':
                     # right
                     if self.x_movement > 0:
-                        self.is_blockedR = True
+                        #self.is_blockedR = True
                         self.rect.x = blocked.rect.left - self.rect.width
                         print(self.name + ' > ' + blocked.text)
                     # left
                     elif self.x_movement < 0:
-                        self.is_blockedL = True
+                        #self.is_blockedL = True
                         self.rect.x = blocked.rect.right
                         print(self.name + ' > ' + blocked.text)
 
                 elif direction == 'y':
                     # down
                     if self.y_movement > 0:
-                        self.is_blockedD = True
+                        #self.is_blockedD = True
                         self.rect.y = blocked.rect.top - self.rect.height
                         print(self.name + ' > ' + blocked.text)
                     # up
                     elif self.y_movement < 0:
-                        self.is_blockedU = True
+                        #self.is_blockedU = True
                         self.rect.y = blocked.rect.bottom
                         print(self.name + ' > ' + blocked.text)
                 self.x_movement = 0
@@ -171,6 +172,7 @@ class Player(pygame.sprite.Sprite):
                 enemy.tagged.append(self)
                 # attack
                 enemy.health -= self.pow
+                self.current_action_reward += 2
                 print(enemy.sprite_class + " > " + str(enemy.health) + "/" + str(enemy.max_health))
                 # defend
                 if not enemy.dead:
@@ -184,18 +186,18 @@ class Player(pygame.sprite.Sprite):
 
         # coordinates are in factors of TILE_SIZE, range is not.
         # the following code has values of : player coords = (224,192) max_range = 32
-        max_range = self.view_range * TILE_SIZE+1
+        max_range = self.view_range * TILE_SIZE
         x = self.rect.x
         y = self.rect.y
 
         for sprite in self.buildings:
             if (x + max_range) >= sprite.x >= (x - max_range) and (
-                    y + max_range) >= sprite.y >= (y - max_range):
+                    y + max_range) >= sprite.y >= (y - max_range) and not sprite.gathered:
                 self.places_of_interest.append(sprite)
 
         for sprite in self.bonus:
             if (x + max_range) >= sprite.x >= (x - max_range) and (
-                    y + max_range) >= sprite.y >= (y - max_range):
+                    y + max_range) >= sprite.y >= (y - max_range) and not sprite.gathered:
                 self.places_of_interest.append(sprite)
 
         for sprite in self.enemies:
@@ -208,9 +210,29 @@ class Player(pygame.sprite.Sprite):
                     y + max_range) >= sprite.y >= (y - max_range):
                 self.places_of_interest.append(sprite)
 
+        """
+        self.is_blockedR = False
+        self.is_blockedL = False
+        self.is_blockedU = False
+        self.is_blockedD = False
+        for block in self.blocks:
+            if x + TILE_SIZE == block.x and (block.y == y or block.y == y+SPEED or block.y == y-SPEED):
+                self.is_blockedL = True
+
+            if x - TILE_SIZE == block.x and (block.y == y or block.y == y+SPEED or block.y == y-SPEED):
+                self.is_blockedR = True
+
+            if (block.x == x or block.x == x+SPEED or block.x == x-SPEED) and block.y == y + TILE_SIZE:
+                self.is_blockedD = True
+
+            if (block.x == x or block.x == x+SPEED or block.x == x-SPEED) and block.y == y - TILE_SIZE:
+                self.is_blockedU = True
+        """
         # print(self.name + ' found: ' + sprite.sprite_class + '(' + str(round(sprite.x/TILE_SIZE)) + ' : ' + str(round(sprite.y/TILE_SIZE)) + ')')
 
-
+    def check_boundaries(self, pt):
+        if pt in self.game.boundaries:
+            return True
 
 
     def update_movement_textures_and_collisions(self):
@@ -280,31 +302,31 @@ class Player(pygame.sprite.Sprite):
         if direction == 0:  # A left
             self.x_movement -= SPEED
             self.y_movement = 0
-            if self.is_blockedR or self.is_blockedU or self.is_blockedD:
-                self.is_blockedR = False
-                self.is_blockedU = False
-                self.is_blockedD = False
+           # if self.is_blockedR or self.is_blockedU or self.is_blockedD:
+           #     self.is_blockedR = False
+           #     self.is_blockedU = False
+           #     self.is_blockedD = False
         elif direction == 1:  # D right
             self.x_movement += SPEED
             self.y_movement = 0
-            if self.is_blockedL or self.is_blockedU or self.is_blockedD:
-                self.is_blockedL = False
-                self.is_blockedU = False
-                self.is_blockedD = False
+          #  if self.is_blockedL or self.is_blockedU or self.is_blockedD:
+           #     self.is_blockedL = False
+           #     self.is_blockedU = False
+            #    self.is_blockedD = False
         elif direction == 2:  # W up
             self.y_movement -= SPEED
             self.x_movement = 0
-            if self.is_blockedL or self.is_blockedR or self.is_blockedD:
-                self.is_blockedL = False
-                self.is_blockedR = False
-                self.is_blockedD = False
+           # if self.is_blockedL or self.is_blockedR or self.is_blockedD:
+            #    self.is_blockedL = False
+            #    self.is_blockedR = False
+            #    self.is_blockedD = False
         elif direction == 3:  # S down
             self.y_movement += SPEED
             self.x_movement = 0
-            if self.is_blockedL or self.is_blockedR or self.is_blockedU:
-                self.is_blockedL = False
-                self.is_blockedR = False
-                self.is_blockedU = False
+           # if self.is_blockedL or self.is_blockedR or self.is_blockedU:
+            #    self.is_blockedL = False
+             #   self.is_blockedR = False
+             #   self.is_blockedU = False
 
 
     """

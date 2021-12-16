@@ -29,6 +29,8 @@ class GameSession:
         self.biome_sprites = biome_sprites_list
         self.required_to_win = required_to_win_list
 
+        self.boundaries = []
+
     def new_game(self):
         print('Starting New Game Session...')
         render_environment(self)

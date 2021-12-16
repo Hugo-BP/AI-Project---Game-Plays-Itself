@@ -89,15 +89,25 @@ class Building(pygame.sprite.Sprite):
         self.gathered = True
         if self.sprite_class == 'house':
             player.exp += self.exp
+
+            if player.health != player.max_health:
+                player.current_action_reward += player.max_health - player.health
+            else:
+                player.current_action_reward += self.exp
+
             player.health = player.max_health
-            player.current_action_reward += self.exp
             print('\n ' + player.name + ' was healed by friendly villagers.\n')
             print(player.name + ' > Health: ' + str(player.health) + '/' + str(player.max_health))
        
         elif self.sprite_class == 'necro_house':
             player.exp += self.exp
+
+            if player.health != player.max_health:
+                player.current_action_reward += player.max_health - player.health
+            else:
+                player.current_action_reward += self.exp
+
             player.health = player.max_health
-            player.current_action_reward += self.exp
             print('\n ' + player.name + ' found some abandoned supplies. The zombies wont need any healing...\n')
             print(player.name + ' > Health: ' + str(player.health) + '/' + str(player.max_health))
 

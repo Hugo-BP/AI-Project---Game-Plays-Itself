@@ -6,12 +6,12 @@ from collections import deque
 from pytorch_model import Linear_QNet, QTrainer
 
 MAX_MEMORY = 500_000
-BATCH_SIZE = 100000 # 1000
-LEARN_RATE = 0.0001 # 0.001
+BATCH_SIZE = 1000  # 1000
+LEARN_RATE = 0.0001  # 0.001
 MAX_PADDING = 50
 
-HIDDEN_LAYER_SIZE = 666# 256
-INPUT_LAYER_SIZE = MAX_PADDING*8 + 13
+HIDDEN_LAYER_SIZE = 666  # 256
+INPUT_LAYER_SIZE = MAX_PADDING*26 + 18
 OUTPUT_SIZE = 4
 
 class Agent:
@@ -26,7 +26,7 @@ class Agent:
         self.gamma = 0.9  # discount rate, must be less than 1
         self.memory = deque(maxlen=MAX_MEMORY)
 
-        # input_size --> size of state[] = MAX_PADDING*8 (each padd has 4 interest coord bools and 4 interest type bools) + 10 (other state bools such as is_fighting or direction)
+        # input_size --> size of state[] = MAX_PADDING*X (X = interest bools) + 18 (other state bools such as is_fighting or direction)
         # output_size --> size of possibilities[] = 4
         # hidden_size --> can change values TODO try different values
         self.model = Linear_QNet(INPUT_LAYER_SIZE, HIDDEN_LAYER_SIZE, OUTPUT_SIZE)
@@ -46,48 +46,87 @@ class Agent:
         dir_u = agent_dir == 2  # W
         dir_d = agent_dir == 3  # S
 
+        # TUPLES
+        next_step_l = (self.player.rect.x - TILE_SIZE, self.player.rect.y)
+        next_step_r = (self.player.rect.x + TILE_SIZE, self.player.rect.y)
+        next_step_u = (self.player.rect.x, self.player.rect.y - TILE_SIZE)
+        next_step_d = (self.player.rect.x, self.player.rect.y + TILE_SIZE)
+
+        is_blockedL = False
+        is_blockedR = False
+        is_blockedU = False
+        is_blockedD = False
+
+        if self.player.check_boundaries(next_step_l):
+            is_blockedL = True
+        if self.player.check_boundaries(next_step_r):
+            is_blockedR = True
+        if self.player.check_boundaries(next_step_u):
+            is_blockedU = True
+        if self.player.check_boundaries(next_step_d):
+            is_blockedD = True
+
         # DANGER
         agent_health = self.player.health
         agent_max_health = self.player.max_health
         agent_remaining_health = (agent_health * 100) / agent_max_health
-        is_in_danger = False
+        low_health = False
+        full_health = False
         # If agent health bellow 33%
         if agent_remaining_health < 33:
-            is_in_danger = True
+            low_health = True
+        if agent_health == agent_max_health:
+            full_health = True
 
         # STATUS
         is_healer = self.player.is_healer
         is_fighting = self.player.is_fighting
+        """
         is_blockedL = self.player.is_blockedL
         is_blockedR = self.player.is_blockedR
         is_blockedU = self.player.is_blockedU
         is_blockedD = self.player.is_blockedD
+        """
         is_alive = self.player.is_alive
 
         state = [
+            is_alive,
+
+            # block location
             is_blockedL,
             is_blockedR,
             is_blockedU,
             is_blockedD,
 
-            dir_l,
+            # cant go there because of block
+            (dir_r and is_blockedR) or (dir_l and is_blockedL) or (dir_u and is_blockedU) or (dir_d and is_blockedD),
+            (dir_r and is_blockedD) or (dir_l and is_blockedR) or (dir_u and is_blockedL) or (dir_d and is_blockedU),
+            (dir_r and is_blockedU) or (dir_l and is_blockedD) or (dir_u and is_blockedR) or (dir_d and is_blockedL),
+            (dir_r and is_blockedL) or (dir_l and is_blockedU) or (dir_u and is_blockedD) or (dir_d and is_blockedR),
+
+            # movement dir
             dir_r,
+            dir_l,
             dir_u,
             dir_d,
 
-            is_in_danger,
+            # status
+            low_health,
+            full_health,
             is_fighting,
             is_healer,
-            is_alive,
+
+            # Interests
+            # ...
         ]
 
-        # FIELD OF VIEW - PLACES OF INTEREST
-        has_places_of_interest = False
-        # if not empty then add all
-        if self.player.places_of_interest:
+        # FIELD OF VIEW - INTERESTS
+        has_interest = False
 
-            has_places_of_interest = True
-            state.append(has_places_of_interest)
+        # if not empty then add interests
+        if self.player.places_of_interest:
+            has_interest = True
+            state.append(has_interest)
 
             for interest in self.player.places_of_interest:
                 state.append(interest.x < self.player.rect.x)  # interest left
@@ -95,12 +134,73 @@ class Agent:
                 state.append(interest.y < self.player.rect.y)  # interest up
                 state.append(interest.y > self.player.rect.y)  # interest down
                 # interest type
+                # player
                 state.append(interest.is_player)
-                state.append(interest.is_enemy)
-                state.append(interest.is_building)
-                state.append(interest.is_bonus)
+                if interest.is_player:
+                    agent_health = interest.health
+                    agent_max_health = interest.max_health
+                    agent_remaining_health = (agent_health * 100) / agent_max_health
+                    low_health = False
+                    full_health = False
+                    # If agent health bellow 33%
+                    if agent_remaining_health < 33:
+                        low_health = True
+                    if agent_health == agent_max_health:
+                        full_health = True
+                    state.append(low_health)
+                    state.append(full_health)
+                else:
+                    state.append(False)
+                    state.append(False)
+
+                # enemy
+                state.append(interest.sprite_class == 'slime')
+                state.append(interest.sprite_class == 'beast')
+                state.append(interest.sprite_class == 'zombie')
+                state.append(interest.sprite_class == 'ghost')
+                state.append(interest.sprite_class == 'necromancer')
+                # friend
+                state.append(interest.sprite_class == 'villager')
+                state.append(interest.sprite_class == 'gnome')
+                state.append(interest.sprite_class == 'faery')
+                state.append(interest.sprite_class == 'demon')
+                # building
+                state.append(interest.sprite_class == 'house')
+                state.append(interest.sprite_class == 'cave')
+                state.append(interest.sprite_class == 'stone_cross')
+                state.append(interest.sprite_class == 'faery_house')
+                state.append(interest.sprite_class == 'castle')
+                state.append(interest.sprite_class == 'evil_castle')
+                state.append(interest.sprite_class == 'necro_house')
+                state.append(interest.sprite_class == 'bridge')
+                state.append(interest.sprite_class == 'broken_bridge')
+                state.append(interest.sprite_class == 'cactus')
+
+                #state.append(interest.is_player)
+                #state.append(interest.is_enemy)
+                #state.append(interest.is_building)
+                #state.append(interest.is_bonus)
             # PADDING SO TENSORS ARE ALL SAME SIZE = 50 places
             for i in range(MAX_PADDING - len(self.player.places_of_interest)):
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
                 state.append(False)
                 state.append(False)
                 state.append(False)
@@ -110,12 +210,32 @@ class Agent:
                 state.append(False)
                 state.append(False)
 
+
         else:
             print(self.player.name + ' interest in nothing ')
             # no places of interest within range of view
-            state.append(has_places_of_interest)
+            state.append(has_interest)
             # PADDING SO TENSORS ARE ALL SAME SIZE = 50 places
             for i in range(MAX_PADDING):
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
                 state.append(False)
                 state.append(False)
                 state.append(False)
@@ -134,7 +254,7 @@ class Agent:
         # the more games played the less likely a move is to be random
         self.epsilon = 80 - self.total_games_played
 
-        if random.randint(0, 160) < self.epsilon:
+        if random.randint(0, 100) < self.epsilon:
             # random moves: exploration vs exploitation tradeoff
             choice = random.choices([0, 1, 2, 3], weights=(25, 25, 25, 25), k=1)
             action = possibilities[choice[0]]
