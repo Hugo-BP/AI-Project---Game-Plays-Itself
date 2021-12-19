@@ -5,13 +5,14 @@ from game_session_class import *
 from collections import deque
 from pytorch_model import Linear_QNet, QTrainer
 
-MAX_MEMORY = 500_000
-BATCH_SIZE = 1000  # 1000
+MAX_MEMORY = 50_000_000
+BATCH_SIZE = 10000  # 1000
 LEARN_RATE = 0.0001  # 0.001
-MAX_PADDING = 50
+MAX_PADDING = 25
 
-HIDDEN_LAYER_SIZE = 666  # 256
-INPUT_LAYER_SIZE = MAX_PADDING*26 + 18
+HIDDEN_LAYER_SIZE = 1024
+#                   interests  +  state  + blocks
+INPUT_LAYER_SIZE = MAX_PADDING*26 + 10 + MAX_PADDING*4
 OUTPUT_SIZE = 4
 
 class Agent:
@@ -26,7 +27,7 @@ class Agent:
         self.gamma = 0.9  # discount rate, must be less than 1
         self.memory = deque(maxlen=MAX_MEMORY)
 
-        # input_size --> size of state[] = MAX_PADDING*X (X = interest bools) + 18 (other state bools such as is_fighting or direction)
+        # input_size --> size of state[] = MAX_PADDING*X (X = interest bools) + Y (Y = other state bools such as is_fighting or direction)
         # output_size --> size of possibilities[] = 4
         # hidden_size --> can change values TODO try different values
         self.model = Linear_QNet(INPUT_LAYER_SIZE, HIDDEN_LAYER_SIZE, OUTPUT_SIZE)
@@ -45,7 +46,8 @@ class Agent:
         dir_r = agent_dir == 1  # D
         dir_u = agent_dir == 2  # W
         dir_d = agent_dir == 3  # S
-
+        """
+        # TILE SIZE DISTANCE TO BLOCK
         # TUPLES
         next_step_l = (self.player.rect.x - TILE_SIZE, self.player.rect.y)
         next_step_r = (self.player.rect.x + TILE_SIZE, self.player.rect.y)
@@ -65,8 +67,8 @@ class Agent:
             is_blockedU = True
         if self.player.check_boundaries(next_step_d):
             is_blockedD = True
-
-        # DANGER
+        """
+        # IN DANGER
         agent_health = self.player.health
         agent_max_health = self.player.max_health
         agent_remaining_health = (agent_health * 100) / agent_max_health
@@ -86,12 +88,8 @@ class Agent:
         is_blockedR = self.player.is_blockedR
         is_blockedU = self.player.is_blockedU
         is_blockedD = self.player.is_blockedD
-        """
-        is_alive = self.player.is_alive
-
-        state = [
-            is_alive,
-
+        
+                    
             # block location
             is_blockedL,
             is_blockedR,
@@ -100,25 +98,47 @@ class Agent:
 
             # cant go there because of block
             (dir_r and is_blockedR) or (dir_l and is_blockedL) or (dir_u and is_blockedU) or (dir_d and is_blockedD),
-            (dir_r and is_blockedD) or (dir_l and is_blockedR) or (dir_u and is_blockedL) or (dir_d and is_blockedU),
-            (dir_r and is_blockedU) or (dir_l and is_blockedD) or (dir_u and is_blockedR) or (dir_d and is_blockedL),
-            (dir_r and is_blockedL) or (dir_l and is_blockedU) or (dir_u and is_blockedD) or (dir_d and is_blockedR),
+            #(dir_r and is_blockedD) or (dir_l and is_blockedR) or (dir_u and is_blockedL) or (dir_d and is_blockedU),
+            #(dir_r and is_blockedU) or (dir_l and is_blockedD) or (dir_u and is_blockedR) or (dir_d and is_blockedL),
+            #(dir_r and is_blockedL) or (dir_l and is_blockedU) or (dir_u and is_blockedD) or (dir_d and is_blockedR),
+            
+        """
+        is_alive = self.player.is_alive
 
-            # movement dir
-            dir_r,
-            dir_l,
-            dir_u,
-            dir_d,
-
-            # status
+        state = [
+            is_alive,
             low_health,
             full_health,
             is_fighting,
             is_healer,
 
-            # Interests
+            # Interests, blocks, dir
             # ...
         ]
+        # blocks
+        if self.player.known_blocks:
+            for block in self.player.known_blocks:
+                state.append(block.x < self.player.rect.x)  # interest left
+                state.append(block.x > self.player.rect.x)  # interest right
+                state.append(block.y < self.player.rect.y)  # interest up
+                state.append(block.y > self.player.rect.y)  # interest down
+            for i in range(MAX_PADDING - len(self.player.known_blocks)):
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+        else:
+            for i in range(MAX_PADDING):
+                state.append(False)
+                state.append(False)
+                state.append(False)
+                state.append(False)
+
+        # movement direction
+        state.append(dir_r)
+        state.append(dir_l)
+        state.append(dir_u)
+        state.append(dir_d)
 
         # FIELD OF VIEW - INTERESTS
         has_interest = False
@@ -254,7 +274,7 @@ class Agent:
         # the more games played the less likely a move is to be random
         self.epsilon = 80 - self.total_games_played
 
-        if random.randint(0, 100) < self.epsilon:
+        if random.randint(0, 200) < self.epsilon:
             # random moves: exploration vs exploitation tradeoff
             choice = random.choices([0, 1, 2, 3], weights=(25, 25, 25, 25), k=1)
             action = possibilities[choice[0]]

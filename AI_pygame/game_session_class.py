@@ -177,6 +177,7 @@ class GameSession:
 
         if self.performance_quit and self.running and self.AI_mode:
             print('Time has run out!')
+            self.total_score += round(self.total_time)
 
             if self.total_score < 0:
                 self.total_score -= 100

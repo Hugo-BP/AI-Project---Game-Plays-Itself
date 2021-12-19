@@ -12,12 +12,28 @@ class Linear_QNet(nn.Module):
         super().__init__()
         # 2 Layer FeedForward network
         self.linear1 = nn.Linear(input_size, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, output_size)
+        self.linear2 = nn.Linear(hidden_size, hidden_size)
+        self.linear3 = nn.Linear(hidden_size, hidden_size)
+        self.linear4 = nn.Linear(hidden_size, hidden_size)
+        self.linear5 = nn.Linear(hidden_size, hidden_size)
+        self.linear6 = nn.Linear(hidden_size, hidden_size)
+        self.linear7 = nn.Linear(hidden_size, hidden_size)
+        self.linear8 = nn.Linear(hidden_size, hidden_size)
+        self.linear9 = nn.Linear(hidden_size, hidden_size)
+        self.linear10 = nn.Linear(hidden_size, output_size)
 
     # pass tensor through net
     def forward(self, tensor):
         tensor = F.relu(self.linear1(tensor))
-        tensor = self.linear2(tensor)
+        tensor = F.relu(self.linear2(tensor))
+        tensor = F.relu(self.linear3(tensor))
+        tensor = F.relu(self.linear4(tensor))
+        tensor = F.relu(self.linear5(tensor))
+        tensor = F.relu(self.linear6(tensor))
+        tensor = F.relu(self.linear7(tensor))
+        tensor = F.relu(self.linear8(tensor))
+        tensor = F.relu(self.linear9(tensor))
+        tensor = self.linear10(tensor)
 
         return tensor
 

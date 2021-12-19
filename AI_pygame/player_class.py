@@ -18,8 +18,9 @@ class Player(pygame.sprite.Sprite):
         self.is_blockedD = False
         """
 
-        # places of interest MAX = 50
+        # places of interest MAX = 20
         self.places_of_interest = []
+        self.known_blocks = []
         self.is_player = True
         self.is_enemy = False
         self.is_building = False
@@ -230,9 +231,23 @@ class Player(pygame.sprite.Sprite):
         """
         # print(self.name + ' found: ' + sprite.sprite_class + '(' + str(round(sprite.x/TILE_SIZE)) + ' : ' + str(round(sprite.y/TILE_SIZE)) + ')')
 
-    def check_boundaries(self, pt):
-        if pt in self.game.boundaries:
-            return True
+    def check_boundaries(self):
+        #if pt in self.game.boundaries:
+         #   return True
+
+        self.known_blocks.clear()
+        self.known_blocks = []
+
+        # coordinates are in factors of TILE_SIZE, range is not.
+        # the following code has values of : player coords = (224,192) max_range = 32
+        max_range = 2 * TILE_SIZE
+        x = self.rect.x
+        y = self.rect.y
+        for sprite in self.blocks:
+            if sprite != self and (x + max_range) >= sprite.x >= (x - max_range) and (
+                    y + max_range) >= sprite.y >= (y - max_range):
+                if len(self.known_blocks) < 20:
+                    self.known_blocks.append(sprite)
 
 
     def update_movement_textures_and_collisions(self):
@@ -411,6 +426,7 @@ class Player(pygame.sprite.Sprite):
         self.level_up()
 
         # check if new interests
+        self.check_boundaries()
         self.update_interests()
 
         # keep updating player while alive - move, collision vs enemy bonus or treasure, animations
